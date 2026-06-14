@@ -1,32 +1,21 @@
 #include "sockets.h"
 #include "string.h"
+#include <stdlib.h>
 
 #define MAX_CLIENTES 10
-#define MAX_NOME 21
 #define TAM_MENSAGEM 1024
 
-typedef struct {
-    char nome[MAX_NOME];
-    char ip[16];
-    int porta;
-} Cliente;
+// typedef struct {
+//     char nome[MAX_NOME];
+//     char ip[16];
+//     int porta;
+// } Cliente;
 
 int qtd_clientes = 0;
-Cliente clientes[MAX_CLIENTES];
+usuario clientes[MAX_CLIENTES];
 
-void menu()
-{
-    int sock = criar_socket(PORTA_SERVIDOR_TCP);
-    char mensagem[TAM_MENSAGEM];
-    
-    for(;;)
-    {
-        socket_receber_mensagem(mensagem, sock);
-        printf("\nTCP server: (%s)\n",mensagem);fflush(stdout);
-    }
-}
 
-int adicionar_cliente(char *nome, char *ip, int porta) {
+int adicionar_cliente(char *nome, char *ip, char *porta) {
     int i;
 
     for(i = 0; i < qtd_clientes; i++) {
@@ -41,17 +30,18 @@ int adicionar_cliente(char *nome, char *ip, int porta) {
         return -1;
     }
 
-    strncpy(clientes[qtd_clientes].nome, nome, MAX_NOME - 1);
-    clientes[qtd_clientes].nome[MAX_NOME - 1] = '\0';
+    strncpy(clientes[qtd_clientes].nome, nome, 15);
+    clientes[qtd_clientes].nome[15] = '\0';
 
-    strncpy(clientes[qtd_clientes].ip, ip, sizeof(clientes[qtd_clientes].ip) - 1);
-    clientes[qtd_clientes].ip[sizeof(clientes[qtd_clientes].ip) - 1] = '\0';
+    strncpy(clientes[qtd_clientes].IP, ip, sizeof(clientes[qtd_clientes].IP) - 1);
+    clientes[qtd_clientes].IP[sizeof(clientes[qtd_clientes].IP) - 1] = '\0';
 
-    clientes[qtd_clientes].porta = porta;
+    strncpy(clientes[qtd_clientes].porta,porta,5);
+    clientes[qtd_clientes].porta[5] = '\0';
 
     qtd_clientes++;
 
-    return 1; // sucesso
+    return 1;
 }
 
 int remover_cliente(const char *nome)
@@ -90,7 +80,7 @@ void enviar_lista_usuarios()
         sprintf(registro,
                 "%s|%s|%d",
                 clientes[i].nome,
-                clientes[i].ip,
+                clientes[i].IP,
                 clientes[i].porta);
 
         strcat(payload, registro);
@@ -108,17 +98,30 @@ void enviar_lista_usuarios()
 
     for(i = 0; i < qtd_clientes; i++)
     {
-        socket_enviar_mensagem(
+        int resultado = socket_enviar_mensagem(
             mensagem,
-            clientes[i].ip,
-            clientes[i].porta
+            clientes[i].IP,
+            atoi(clientes[i].porta)
         );
+    }
+}
+
+void menu()
+{
+    int sock = criar_socket(PORTA_SERVIDOR_TCP);
+    char mensagem[TAM_MENSAGEM];
+    
+    for(;;)
+    {
+        socket_receber_mensagem(mensagem, sock);
+        printf("\nTCP server: (%s)\n",mensagem);fflush(stdout);
+        enviar_lista_usuarios();
     }
 }
 
 int main()
 {
-    int sock;
+    // int sock;
 #ifdef WIN
     WORD wPackedValues;
     WSADATA  SocketInfo;
