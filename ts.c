@@ -110,11 +110,78 @@ void menu()
 {
     int sock = criar_socket(PORTA_SERVIDOR_TCP);
     char mensagem[TAM_MENSAGEM];
+    char tipo;
+    char tam_str[3];
+    int tam;
+
     
     for(;;)
     {
         socket_receber_mensagem(mensagem, sock);
         printf("\nTCP server: (%s)\n",mensagem);fflush(stdout);
+
+        tipo = mensagem[0];
+        strncpy(tam_str, mensagem+1, 3);
+        tam_str[3] = '\0';
+        tam = atoi(tam_str);
+
+        char* dados = mensagem + 4;
+
+        switch(tipo)
+    {
+        case 'R':
+        {
+            char nome[16];
+            char ip[16];
+            int porta;
+            char cPorta[5];
+
+            char *token = strtok(dados, "|");
+
+            if(token != NULL)
+                strcpy(nome, token);
+
+            token = strtok(NULL, "|");
+
+            if(token != NULL)
+                strcpy(ip, token);
+
+            token = strtok(NULL, "|");
+
+            if(token != NULL)
+                porta = atoi(token);
+            
+            printf("Novo cliente:\n");
+            printf("Nome : %s\n", nome);
+            printf("IP   : %s\n", ip);
+            printf("Porta: %d\n", porta);
+
+            snprintf(cPorta, sizeof(cPorta), "%03d", porta);
+            adicionar_cliente(nome, ip, cPorta);
+
+            break;
+        }
+
+        case 'S':
+        {
+            char nome[16];
+
+            char *token = strtok(dados, "|");
+
+            if(token != NULL)
+                strcpy(nome, token);
+
+            printf("Cliente saiu: %s\n", nome);
+
+            remover_cliente(nome);
+
+            break;
+        }
+
+        default:
+            printf("Tipo de mensagem desconhecido: %c\n", tipo);
+    }
+
         enviar_lista_usuarios();
     }
 }
