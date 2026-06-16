@@ -7,29 +7,75 @@
 #include <pthread.h>
 #include <string.h>
 
-const char NOME_USUARIO[TAM_MENSAGEM]; 
-const char IP_USUARIO[TAM_MENSAGEM];          
-const char cPORTA_USUARIO[TAM_MENSAGEM];
-const int PORTA_USUARIO;
-const char IP_SERVIDOR[TAM_MENSAGEM];
+char NOME_USUARIO[TAM_MENSAGEM]; 
+char IP_USUARIO[TAM_MENSAGEM];          
+char cPORTA_USUARIO[TAM_MENSAGEM];
+int PORTA_USUARIO;
+char IP_SERVIDOR[TAM_MENSAGEM];
+char destinatario[TAM_MENSAGEM];
+usuario usuarios[10];
+int qtd_usuarios = 0;
 
 pthread_mutex_t m_r;
+
+void enviar_msgbroadcast(char *texto);
+void enviar_msgdireta(char *destinatario, char *texto);
 
 void *receber(void *param)
 {
     int sock = criar_socket(PORTA_USUARIO);
     char mensagem[TAM_MENSAGEM];
-    
+
     memset((void *) mensagem,(int) NULL, sizeof(mensagem));
     
     for(;;)
     {
+        memset(mensagem, 0, TAM_MENSAGEM);
         int status = socket_receber_mensagem(mensagem, sock);
         if(status == 200)
         {
-            pthread_mutex_lock(&m_r);
-            printf("\nTCP cliente: (%s)\n",mensagem);fflush(stdout);
-            pthread_mutex_unlock(&m_r);
+            if(mensagem[0] == 'L')
+            {
+                pthread_mutex_lock(&m_r);
+
+                qtd_usuarios = 0;
+
+                char dados[TAM_MENSAGEM];
+
+                strcpy(dados, &mensagem[4]);
+
+                char *token = strtok(dados, "|");
+
+                while(token != NULL)
+                {
+                
+                    strcpy(usuarios[qtd_usuarios].nome, token);
+
+                    token = strtok(NULL, "|");
+                    if(token == NULL) break;
+                    strcpy(usuarios[qtd_usuarios].IP, token);
+
+                    token = strtok(NULL, "|");
+                    if(token == NULL) break;
+                    strcpy(usuarios[qtd_usuarios].porta, token);
+                    qtd_usuarios++;
+
+                    token = strtok(NULL, "|");
+                }
+        
+                pthread_mutex_unlock(&m_r);
+            }
+            else
+            {
+                pthread_mutex_lock(&m_r);
+                if(mensagem[0] == 'A')
+                {
+                    pthread_mutex_unlock(&m_r);
+                    continue;
+                }
+                printf("\nTCP cliente: (%s)\n",mensagem);
+                pthread_mutex_unlock(&m_r);
+            }
         }
     }
 }
@@ -46,9 +92,9 @@ int registro()
     strcat(mensagem, cPORTA_USUARIO);
     strcat(mensagem, "|");
     int tam = strlen(mensagem) - 4;
-    //mensagem[1] = '0' + (tam / 100) % 10; 
-    //mensagem[2] = '0' + (tam / 10) % 10; 
-    //mensagem[3] = '0' + (tam / 1) % 10; 
+    mensagem[1] = '0' + (tam / 100) % 10; 
+    mensagem[2] = '0' + (tam / 10) % 10; 
+    mensagem[3] = '0' + (tam / 1) % 10; 
 
     printf("%s\n", mensagem);
     int status = socket_enviar_mensagem(mensagem, IP_SERVIDOR, PORTA_SERVIDOR_TCP);
@@ -56,6 +102,59 @@ int registro()
     return status;
 }
 
+// Função broadcast
+void enviar_msgbroadcast(char *texto){
+
+    // Tratamento da mensagem, seguindo os mesmos passos da direta para definir o protocolo (B000|Nome|Texto)
+    char mensagem[TAM_MENSAGEM];
+    memset((void *) mensagem, (int) NULL, TAM_MENSAGEM);
+    strcat(mensagem, "B000");
+    strcat(mensagem, NOME_USUARIO); 
+    strcat(mensagem, "|");
+    strcat(mensagem, texto);
+    strcat(mensagem, "|");
+    
+    int tam = strlen(mensagem) - 4;
+    mensagem[1] = (char)('0' + (tam / 100) % 10);
+    mensagem[2] = (char)('0' + (tam / 10) % 10);
+    mensagem[3] = (char)('0' + (tam / 1) % 10);
+
+    for(int i = 0; i < qtd_usuarios; i++)
+    {
+        if(strcmp(usuarios[i].nome, NOME_USUARIO) == 0)
+        {
+            continue;
+        }
+
+        char copia[TAM_MENSAGEM];
+        memset(copia, 0, TAM_MENSAGEM);
+        strcpy(copia, mensagem);
+        socket_enviar_mensagem(copia,usuarios[i].IP,atoi(usuarios[i].porta));
+    }
+}
+
+void enviar_msgdireta(char *destinatario, char *texto){
+    char mensagem[TAM_MENSAGEM];
+    memset(mensagem, 0, TAM_MENSAGEM);
+    strcat(mensagem, "D000");
+    strcat(mensagem, NOME_USUARIO);
+    strcat(mensagem, "|");
+    strcat(mensagem, texto);
+    strcat(mensagem, "|");
+    int tam = strlen(mensagem) - 4;
+    mensagem[1] = (char)('0' + (tam / 100) % 10);
+    mensagem[2] = (char)('0' + (tam / 10) % 10);
+    mensagem[3] = (char)('0' + (tam / 1) % 10);
+
+    for(int i = 0; i < qtd_usuarios; i++)
+    {
+        if(strcmp(destinatario, usuarios[i].nome) == 0)
+        {
+            socket_enviar_mensagem(mensagem, usuarios[i].IP, atoi(usuarios[i].porta));
+            return;
+        }
+    }
+}
 
 void menu()
 {
@@ -82,12 +181,36 @@ void menu()
 
     for(;;)
     {
+     
+        char entrada[TAM_MENSAGEM];
 
-        scanf("%s", texto);
+        printf("\nDigite (destinatario|mensagem): ");
+        fgets(entrada, TAM_MENSAGEM, stdin);
+        entrada[strcspn(entrada, "\n")] = '\0';
+        char *separador = strchr(entrada, '|');
+
+        if(separador == NULL)
+        {
+            printf("Formato invalido!\n");
+            continue;
+        }
+         *separador = '\0';
+
+        strcpy(destinatario, entrada);
+        strcpy(texto, separador + 1);
+
+        texto[strcspn(texto, "\n")] = '\0';
+        texto[strcspn(texto, "\r")] = '\0';
 
         char mensagem[TAM_MENSAGEM];
         memset((void *) mensagem,(int) NULL, TAM_MENSAGEM);
-        strcat(mensagem, "D000");
+        
+        // Altera dinamicamente o prefixo do protocolo para 'B' no servidor caso seja um broadcast
+        if(strcmp(destinatario, "broadcast") == 0) {
+            strcat(mensagem, "B000");
+        } else {
+            strcat(mensagem, "D000");
+        }
         strcat(mensagem, NOME_USUARIO);
         strcat(mensagem, "|");
         strcat(mensagem, texto);
@@ -99,7 +222,14 @@ void menu()
 
 
 
-        socket_enviar_mensagem(mensagem, IP_SERVIDOR, PORTA_SERVIDOR_TCP);
+        if(strcmp(destinatario, "broadcast") == 0)
+        {
+            enviar_msgbroadcast(texto);
+        }
+        else
+        {
+            enviar_msgdireta(destinatario, texto);
+        }
 
     }
 

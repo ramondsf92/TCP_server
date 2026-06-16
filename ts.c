@@ -123,7 +123,7 @@ void menu()
     int sock = criar_socket(PORTA_SERVIDOR_TCP);
     char mensagem[TAM_MENSAGEM];
     char tipo;
-    char tam_str[3];
+    char tam_str[4];
     int tam;
 
     
@@ -137,7 +137,7 @@ void menu()
         tam_str[3] = '\0';
         tam = atoi(tam_str);
 
-        char* dados = mensagem + 5;
+        char* dados = mensagem + 4;
 
         switch(tipo)
     {
@@ -146,7 +146,7 @@ void menu()
             char nome[16];
             char ip[16];
             int porta;
-            char cPorta[5];
+            char cPorta[6];
 
             char *token = strtok(dados, "|");
 
@@ -189,6 +189,13 @@ void menu()
 
             break;
         }
+        case 'D':
+            printf("Mensagem direta recebida: %s\n", mensagem);
+            break;
+
+        case 'B':
+            printf("Broadcast recebido: %s\n", mensagem);
+            break;
 
         default:
             printf("Tipo de mensagem desconhecido: %c\n", tipo);
