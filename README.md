@@ -13,7 +13,7 @@
 
  ### Mensagens
 
- Registro:
+Registro:
 R999Nome|IP|Porta|
 
 Notas:
