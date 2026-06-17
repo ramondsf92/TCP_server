@@ -1,6 +1,5 @@
 #include"sockets.h"
 #include <string.h>
-
 int criar_socket(int porta)
 {
     int sock;
@@ -46,6 +45,25 @@ int criar_socket(int porta)
     return(sock);
 }
 
+int recv_all(int sock, char *buffer, int tamanho)
+{
+    int recebidos = 0;
+
+    while(recebidos < tamanho)
+    {
+        int r = recv(sock,
+                     buffer + recebidos,
+                     tamanho - recebidos,
+                     0);
+
+        if(r <= 0)
+            return -1;
+
+        recebidos += r;
+    }
+
+    return 0;
+}
 int conectar_com_servidor(int sock,char *IP,int porta)
 {
     struct sockaddr_in endereco; /* Endereço Local */
@@ -106,7 +124,7 @@ int receber_mensagem(char *mensagem,int sock)
 
     /* Espera pela recepção de alguma mensagem do cliente conectado*/
     char tipo;
-    if (recv(sock, &tipo, 1, 0) < 0)
+    if (recv_all(sock, &tipo, 1) < 0)
     {
         printf("\nErro na recepção da mensagem\n");fflush(stdout);
         return(-1);
@@ -115,7 +133,7 @@ int receber_mensagem(char *mensagem,int sock)
     char valtam[4];
     memset((void *) valtam, 0, 4 * sizeof(char));
 
-    if (recv(sock, valtam, 3, 0) < 0)
+    if (recv_all(sock, valtam, 3) < 0)
     {
         printf("\nErro na recepção da mensagem\n");fflush(stdout);
         return(-1);
@@ -127,18 +145,19 @@ int receber_mensagem(char *mensagem,int sock)
     // limpa a mensagem (memset) depois...
     if (tam > 0)
     {
-        if (recv(sock, texto, tam, 0) < 0)
+        if(recv_all(sock, texto, tam) < 0)
         {
-            printf("\nErro na recepção da mensagem\n");fflush(stdout);
-            return(-1);
+            return -1;
         }
+    texto[tam] = '\0';
     }
 
+    // ADIÇÃO
     mensagem[0] = tipo;
     mensagem[1] = '\0';
     strcat(mensagem, valtam);
     strcat(mensagem, texto);
-
+    
     return(0);
 }
 
@@ -168,7 +187,9 @@ int socket_enviar_mensagem(char *mensagem, char *IP, int PORTA)
         return(500);
     }
 
-    resultado = receber_mensagem(mensagem,sock);
+    char resposta[TAM_MENSAGEM];
+    memset(resposta, 0, TAM_MENSAGEM);
+    resultado = receber_mensagem(resposta, sock);
     if (resultado < 0)
     {
         printf("\nErro no recebimento da mensagem\n");
@@ -178,11 +199,21 @@ int socket_enviar_mensagem(char *mensagem, char *IP, int PORTA)
 
     close(sock);
 
-    if (mensagem[0] == 'A')
+    if(resposta[0] == 'A')
+    {
+        return 200;
+    }
+
+    return 500;
+
+    if(mensagem[0] == 'A')
     {
         return (200);
     }
-    return (500);
+    else 
+    {
+        return (500);
+    }
 }
 
 int socket_receber_mensagem(char *mensagem, int sock)
