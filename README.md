@@ -1,5 +1,8 @@
+# Para Compilar:
+gcc ts.c sockets.c -o ts (servidor)
+gcc tc.c sockets.c -o tc -pthread (cliente)
 
-### TCP server
+# TCP server
 
  - salvar lista de usuarios 
  - Mensagem direta(D)
@@ -11,7 +14,7 @@
  - Guardar as ultimas 5 mensagens
 
 
- ### Mensagens
+# Mensagens
 
 Registro:
 R999Nome|IP|Porta|

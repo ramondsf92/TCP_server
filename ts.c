@@ -1,6 +1,7 @@
 #include "sockets.h"
 #include "string.h"
 #include <stdlib.h>
+#include <signal.h>
 
 #define MAX_CLIENTES 10
 #define TAM_MENSAGEM 1024
@@ -89,10 +90,7 @@ void enviar_lista_usuarios()
             strcat(payload, "|");
     }
 
-    sprintf(mensagem,
-            "L%03d%s",
-            (int)strlen(payload),
-            payload);
+    montar_mensagem(mensagem, sizeof(mensagem), 'L', payload);
 
     printf("Broadcast: %s\n", mensagem);
 
@@ -118,9 +116,28 @@ void mostrar_clientes() {
     }
 }
 
+/* Handler de SIGINT (Ctrl+C): avisa o encerramento e sai.
+   Usa write/_exit (async-signal-safe), não printf. */
+void tratar_sigint_servidor(int sig)
+{
+    (void)sig;
+    const char *msg = "\nEncerrando servidor...\n";
+    write(STDOUT_FILENO, msg, sizeof("\nEncerrando servidor...\n") - 1);
+    _exit(0);
+}
+
 void menu()
 {
     int sock = criar_socket(PORTA_SERVIDOR_TCP);
+    if(sock < 0)
+    {
+        printf("Falha ao iniciar o servidor (porta %d ocupada?).\n", PORTA_SERVIDOR_TCP);
+        return;
+    }
+    printf("=== Servidor ativo na porta %d. Aguardando conexoes... (Ctrl+C para encerrar) ===\n",
+           PORTA_SERVIDOR_TCP);
+    fflush(stdout);
+
     char mensagem[TAM_MENSAGEM];
     char tipo;
     char tam_str[4];
@@ -224,6 +241,16 @@ int main()
         strncpy(clientes[k].nome, "", 15);
         clientes[k].nome[15] = '\0';
     }
+
+#ifndef WIN
+    /* Encerramento limpo do servidor no Ctrl+C */
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = tratar_sigint_servidor;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sigaction(SIGINT, &sa, NULL);
+#endif
 
     menu();
 

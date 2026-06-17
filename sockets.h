@@ -38,5 +38,6 @@ int enviar_mensagem(char *mensagem, int sock);
 int receber_mensagem(char *mensagem, int sock);
 int socket_receber_mensagem(char *mensagem, int sock);
 int socket_enviar_mensagem(char *mensagem, char *IP, int PORTA);
+int montar_mensagem(char *dest, size_t n, char tipo, const char *payload);
 
 #endif // SOCKETS_TCP_H

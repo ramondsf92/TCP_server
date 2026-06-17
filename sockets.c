@@ -1,5 +1,12 @@
 #include"sockets.h"
 #include <string.h>
+
+int montar_mensagem(char *dest, size_t n, char tipo, const char *payload)
+{
+    int len = (int)strlen(payload);
+    return snprintf(dest, n, "%c%03d%s", tipo, len, payload);
+}
+
 int criar_socket(int porta)
 {
     int sock;
@@ -120,7 +127,7 @@ int enviar_mensagem(char *mensagem,int sock)
 int receber_mensagem(char *mensagem,int sock)
 {
     /* Limpar o buffer da mensagem */
-    memset((void *) mensagem,(int) NULL, (TAM_MENSAGEM));
+    memset(mensagem, 0, TAM_MENSAGEM);
 
     /* Espera pela recepção de alguma mensagem do cliente conectado*/
     char tipo;
@@ -141,7 +148,7 @@ int receber_mensagem(char *mensagem,int sock)
     int tam = atoi(valtam);
 
     char texto[TAM_MENSAGEM];
-    memset((void *) texto,(int) NULL, (TAM_MENSAGEM));
+    memset(texto, 0, TAM_MENSAGEM);
     // limpa a mensagem (memset) depois...
     if (tam > 0)
     {
@@ -205,15 +212,6 @@ int socket_enviar_mensagem(char *mensagem, char *IP, int PORTA)
     }
 
     return 500;
-
-    if(mensagem[0] == 'A')
-    {
-        return (200);
-    }
-    else 
-    {
-        return (500);
-    }
 }
 
 int socket_receber_mensagem(char *mensagem, int sock)
