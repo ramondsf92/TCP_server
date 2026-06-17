@@ -133,8 +133,12 @@ int receber_mensagem(char *mensagem,int sock)
             return(-1);
         }
     }
+    char tipo_str[2];
 
-    strcat(mensagem, &tipo);
+    tipo_str[0] = tipo;
+    tipo_str[1] = '\0';
+
+    strcat(mensagem, tipo_str);
     strcat(mensagem, valtam);
     strcat(mensagem, texto);
 
@@ -204,6 +208,7 @@ int socket_receber_mensagem(char *mensagem, int sock)
 
     /* Recebe a mensagem do cliente */
     resultado = receber_mensagem(mensagem, socket_cliente);
+    
     if (resultado < 0)
     {
         resultado = enviar_mensagem("N000", socket_cliente);
